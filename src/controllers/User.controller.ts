@@ -53,24 +53,24 @@ export const registerUser = async (req: UserRequest, res: Response, next: NextFu
 
 export const loginUser = async (req: UserRequest, res: Response, next: NextFunction)=>{
     try{
-            const {email, password} = req?.body;
-            const user = await User.findOne({email});
-            if(!user){
-                throw new ApiError(404, "Email doesn't exist");
-            }
-            const isValid = await user?.isPasswordCorrect(password);
-            if(!isValid){
-                throw new ApiError(404, "Password is wrong!");
-            }
-            const token = await generateAuthToken(user._id);
-            console.log(token);
-            const data = {
-                user,
-                accessToken: token,
-            }
-            res.status(200)
-            .cookie("accessToken",token)
-            .json(new ApiResponse("User loggedIn",data,200));
+        const {email, password} = req?.body;
+        const user = await User.findOne({email});
+        if(!user){
+            throw new ApiError(404, "Email doesn't exist");
+        }
+        const isValid = await user?.isPasswordCorrect(password);
+        if(!isValid){
+            throw new ApiError(404, "Password is wrong!");
+        }
+        const token = await generateAuthToken(user._id);
+        console.log(token);
+        const data = {
+            user,
+            accessToken: token,
+        }
+        res.status(200)
+        .cookie("accessToken",token)
+        .json(new ApiResponse("User loggedIn",data,200));
     }
     catch(err){
         const CustomErr = err as CustomError;

@@ -32,7 +32,7 @@ export const createPost=async(req:UserRequest,res:Response)=>{
             post
         }
         res.status(200)
-        .json(new ApiResponse("Post created successfully", data, 200));
+        .json(new ApiResponse("Post created successfully", {}, 200));
     }
     catch(err){
         const customErr = err as CustomError;
@@ -46,3 +46,51 @@ export const createPost=async(req:UserRequest,res:Response)=>{
         }
     }
 }
+
+export const getPost=async(req:UserRequest,res:Response)=>{
+    try{
+        const user = req.user._id;
+        if(!user){
+            throw new ApiError(404, "Unauthorized request!");
+        }
+        const posts = await Post.find({})
+        .populate("user")
+        res.status(200).json(new ApiResponse("Posts fetched successfully",{posts},200));
+    }
+    catch(err){
+        const customErr = err as CustomError;
+        if(customErr.message){
+            res.status(customErr.statusCode || 500).json(customErr.message);
+        }else{
+            res.status(500).json("Some error occured!");
+        }
+    }
+}
+
+export const likePost=async(req:UserRequest,res:Response)=>{
+    try{
+        const user = req.user?._id;
+        if(!user){
+            throw new ApiError(404, "Unauthorized request!");
+        }
+        const id = req.body.id;
+        const post = await Post.findById(id);
+        if(!post){
+            throw new ApiError(404, "Post not found!");
+        }
+        if(post){
+            post?.likes.push(user);
+            post.save();
+        }
+        res.status(200).json(new ApiResponse("You liked this post!",{post},200));
+    }
+    catch(err){
+        const customErr = err as CustomError;
+        if(customErr?.message){
+            res.status(customErr?.statusCode || 500).json(customErr?.message);
+        }else{
+            res.status(500).json("Some error occured!");
+        }
+    }
+}
+

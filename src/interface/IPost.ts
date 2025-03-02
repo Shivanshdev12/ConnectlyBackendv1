@@ -7,4 +7,5 @@ export interface ICreatePost extends Document {
     image?: string;
     likes: Types.ObjectId[];
     dislikes: number;
+    comments: Types.ObjectId[];
 }

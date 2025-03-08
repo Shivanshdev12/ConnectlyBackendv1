@@ -26,7 +26,7 @@ export const registerUser = async (req: UserRequest, res: Response, next: NextFu
         const avatarLocalPath = avatarFiles?.avatar?.[0]?.path;
         const avatar = await uploadOnCloudinary(avatarLocalPath);
         const user = await User.create({
-            avatar: avatar?.secure_url || "",
+            avatar: avatar?.url || "",
             firstName,
             lastName,
             email,
@@ -86,7 +86,7 @@ export const loginUser = async (req: UserRequest, res: Response, next: NextFunct
 
 export const getUser = async (req: UserRequest, res: Response, next: NextFunction)=>{
     try{
-        const {userId} = req.params;
+        const {userId} = req.query;
         const user = await User.findById(userId);
         if(!user){
             throw new ApiError(404, "User doesn't exist");
@@ -103,6 +103,34 @@ export const getUser = async (req: UserRequest, res: Response, next: NextFunctio
         else{
             res.status(500)
             .json("Some error occured!");
+        }
+    }
+}
+
+export const logoutUser = async (req: UserRequest, res: Response, next: NextFunction)=>{
+    try{
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                $unset:{
+                    accessToken:1,
+                }
+            },
+            {
+                new: true
+            }
+        )
+        res
+        .status(200)
+        .clearCookie("accessToken")
+        .json(new ApiResponse("User logged Out",{},200));
+    }
+    catch(err){
+        const customErr = err as CustomError;
+        if(customErr?.message){
+            res.status(customErr?.statusCode).json(customErr?.message)
+        }else{
+            res.status(500).json("Some error occured!");
         }
     }
 }

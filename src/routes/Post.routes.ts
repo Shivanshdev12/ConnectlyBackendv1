@@ -7,6 +7,6 @@ const router = Router();
 
 router.route("/createPost").post(verifyJwt, upload.fields([{name:"image", maxCount:1}]),createPost);
 router.route("/getPost").get(verifyJwt, getPost);
-router.route("/likePost").post(verifyJwt, likePost);
+router.route("/likePost").get(verifyJwt, likePost);
 
 export default router;

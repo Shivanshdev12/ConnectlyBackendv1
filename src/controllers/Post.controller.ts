@@ -5,90 +5,105 @@ import { Post } from "../models/Post.model";
 import { uploadOnCloudinary } from "../utils/cloudinary";
 import ApiResponse from "../utils/ApiResponse";
 
-export const createPost=async(req:UserRequest,res:Response)=>{
-    try{
+export const createPost = async (req: UserRequest, res: Response) => {
+    try {
         const userId = req.user._id;
-        if(!userId){
+        if (!userId) {
             throw new ApiError(401, "Unauthorized request");
         }
-        const {title, description} = req.body;
-        const imageFiles = 
-        req.files as {[fieldname: string]: Express.Multer.File[]} | undefined;
+        const { title, description } = req.body;
+        const imageFiles =
+            req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
         const imageLocalPath = imageFiles?.image?.[0]?.path;
-        if(!imageLocalPath){
+        if (!imageLocalPath) {
             throw new ApiError(400, "Image not uploaded");
         }
         const postImage = await uploadOnCloudinary(imageLocalPath);
-        if(!postImage){
+        if (!postImage) {
             throw new ApiError(400, "Image not uploaded");
         }
         const post = await Post.create({
-            user:userId,
+            user: userId,
             title,
             description,
             image: postImage?.url
         })
-        const data:object = {
+        const data: object = {
             post
         }
         res.status(200)
-        .json(new ApiResponse("Post created successfully", {}, 200));
+            .json(new ApiResponse("Post created successfully", {}, 200));
     }
-    catch(err){
+    catch (err) {
         const customErr = err as CustomError;
-        if(customErr.message){
+        if (customErr.message) {
             res.status(customErr.statusCode)
-            .json(customErr.message);
+                .json(customErr.message);
         }
-        else{
+        else {
             res.status(500)
-            .json("Some error occured!");
+                .json("Some error occured!");
         }
     }
 }
 
-export const getPost=async(req:UserRequest,res:Response)=>{
-    try{
+export const getPost = async (req: UserRequest, res: Response) => {
+    try {
         const user = req.user._id;
-        if(!user){
+        if (!user) {
             throw new ApiError(404, "Unauthorized request!");
         }
+
         const posts = await Post.find({})
-        .populate("user")
-        res.status(200).json(new ApiResponse("Posts fetched successfully",{posts},200));
-    }
-    catch(err){
+            .populate({
+                path: "comments",
+                populate: {
+                    path: "user", // 🔥 Ensure the user inside comments is populated
+                    model: "User",
+                    select: "-password -email" // Exclude sensitive fields
+                }
+            })
+            .populate({
+                path: "user",
+                model: "User",
+                select: "-password -email"
+            })
+            .select("-password");
+
+        res.status(200).json(new ApiResponse("Posts fetched successfully", { posts }, 200));
+    } catch (err) {
         const customErr = err as CustomError;
-        if(customErr.message){
+        if (customErr.message) {
             res.status(customErr.statusCode || 500).json(customErr.message);
-        }else{
-            res.status(500).json("Some error occured!");
+        } else {
+            res.status(500).json("Some error occurred!");
         }
     }
-}
+};
 
-export const likePost=async(req:UserRequest,res:Response)=>{
-    try{
+
+export const likePost = async (req: UserRequest, res: Response) => {
+    try {
         const user = req.user?._id;
-        if(!user){
+        if (!user) {
             throw new ApiError(404, "Unauthorized request!");
         }
         const id = req.body.id;
         const post = await Post.findById(id);
-        if(!post){
+        if (!post) {
             throw new ApiError(404, "Post not found!");
         }
-        if(post){
+        if (post) {
             post?.likes.push(user);
             post.save();
         }
-        res.status(200).json(new ApiResponse("You liked this post!",{post},200));
+        res.status(200).json(new ApiResponse("You liked this post!", { post }, 200));
     }
-    catch(err){
+    catch (err) {
         const customErr = err as CustomError;
-        if(customErr?.message){
+        if (customErr?.message) {
             res.status(customErr?.statusCode || 500).json(customErr?.message);
-        }else{
+        } else {
             res.status(500).json("Some error occured!");
         }
     }

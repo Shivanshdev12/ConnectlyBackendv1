@@ -134,3 +134,69 @@ export const logoutUser = async (req: UserRequest, res: Response, next: NextFunc
         }
     }
 }
+
+export const updateCoverImage = async (req: UserRequest, res: Response, next: NextFunction) => {
+    try {
+        const { userId } = req.body;
+        if (!userId) {
+            res.status(400).json("Unauthorized request!");
+        }
+
+        const coverFiles = req.files as { [fieldname: string]: Express.Multer.File[] };
+        const coverLocalPath = coverFiles.coverImage[0]?.path;
+
+        if (!coverLocalPath) {
+            res.status(400).json({ message: "Invalid file uploaded!" });
+        }
+
+        const coverImage = await uploadOnCloudinary(coverLocalPath);
+
+        if (!coverImage?.url) {
+            res.status(500).json({ message: "Failed to upload cover image!" });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { coverImage: coverImage?.url ?? "" },
+            { new: true }
+        );
+
+        if (!user) {
+            res.status(404).json({ message: "User not found!" });
+        }
+        res
+        .status(200)
+        .json(new ApiResponse("Cover Image updated!", { user }, 200));
+
+    } catch (err) {
+        res
+        .status(500)
+        .json({ message: "Internal Server Error!" });
+    }
+};
+
+export const searchUsers = async (req: UserRequest, res: Response, next: NextFunction) => {
+    try {
+      const {q} = req.query;
+      const users = await User.find({
+        $or: [
+          { firstName: { $regex: q, $options: "i" } }, 
+          { email: { $regex: q, $options: "i" } },
+          { lastName: { $regex: q, $options: "i" } }
+        ]
+      }).select("-password");
+      res.status(200)
+      .json(new ApiResponse("Users list fetched!",users,200));
+    } catch (error) {
+        const CustomErr = error as CustomError;
+        if(CustomErr?.message){
+            res.status(CustomErr?.statusCode)
+            .json(CustomErr?.message);
+        }
+        else{
+            res.status(500)
+            .json("Some error occured!");
+        }
+    }
+};
+

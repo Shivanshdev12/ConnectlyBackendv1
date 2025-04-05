@@ -28,7 +28,15 @@ const userSchema = new Schema<UserRegister>({
     password:{
         type:String,
         required:true
-    }
+    },
+    following:[{
+        type: Schema.Types.ObjectId,
+        ref: "User",
+    }],
+    followers:[{
+        type: Schema.Types.ObjectId,
+        ref: "User"
+    }],
 },{
     timestamps:true
 });

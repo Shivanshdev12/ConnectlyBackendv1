@@ -5,6 +5,7 @@ import { User } from "../models/User.model";
 import ApiError from "../utils/ApiError";
 import ApiResponse from "../utils/ApiResponse";
 import { uploadOnCloudinary } from "../utils/cloudinary";
+import mongoose from "mongoose";
 
 export const generateAuthToken = async (userId:object)=>{
     const id = await User.findById(userId);
@@ -200,3 +201,44 @@ export const searchUsers = async (req: UserRequest, res: Response, next: NextFun
     }
 };
 
+export const followUser = async (req: UserRequest, res: Response, next: NextFunction) => {
+    try {
+        let { followingId } = req.query;
+
+        if (Array.isArray(followingId)) {
+            followingId = followingId[0];
+        }
+        
+        if (!followingId || typeof followingId !== "string") {
+            res.status(400).json(new ApiError(400, "Invalid followingId"));
+        }
+
+        const userTobeAdded = await User.findById(followingId);
+        if (!userTobeAdded) {
+            res.status(404).json(new ApiError(404, "User doesn't exist"));
+        }
+
+        const user = await User.findById(req?.user?._id) as any;
+        if (!user) {
+            res.status(401).json(new ApiError(401, "Unauthorized access"));
+        }
+
+        if (!user?.following) {
+            user.following = []; // Initialize array if undefined
+        }
+
+        const followingObjectId = new mongoose.Types.ObjectId(followingId as any);
+
+        if (!user?.following.some((id: any) => id.equals(followingObjectId))) {
+            user?.following.push(followingObjectId);
+            await user?.save();
+        }
+
+        const data = user;
+
+        res.status(200).json(new ApiResponse("User added to following", data, 200));
+    } catch (err) {
+        const CustomErr = err as CustomError;
+        res.status(CustomErr?.statusCode || 500).json(CustomErr?.message || "Some error occurred!");
+    }
+};

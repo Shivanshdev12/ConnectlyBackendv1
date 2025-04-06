@@ -1,7 +1,8 @@
-import { NextFunction, Response } from "express";
+import { Response } from "express";
 import { CustomError, UserRequest } from "../interface/IUser";
 import ApiError from "../utils/ApiError";
 import { Post } from "../models/Post.model";
+import { User } from "../models/User.model";
 import { uploadOnCloudinary } from "../utils/cloudinary";
 import ApiResponse from "../utils/ApiResponse";
 
@@ -109,3 +110,25 @@ export const likePost = async (req: UserRequest, res: Response) => {
     }
 }
 
+export const getUserPost = async (req: UserRequest, res: Response) => {
+    try{
+        const {userId} = req.query;
+        const user = await User.findById(userId);
+        if(!user){
+            throw new ApiError(404, "User not found");
+        }
+        const posts = await Post.find({user: userId}).select("-__v");
+        if(!posts){
+            throw new ApiError(404, "No Posts found");
+        }
+        res.status(200).json(new ApiResponse("Posts fetched successfully", posts, 200));
+    }
+    catch(err){
+        const customErr = err as CustomError;
+        if (customErr?.message) {
+            res.status(customErr?.statusCode || 500).json(customErr?.message);
+        } else {
+            res.status(500).json("Some error occured!");
+        }
+    }
+}

@@ -179,13 +179,19 @@ export const updateCoverImage = async (req: UserRequest, res: Response, next: Ne
 export const searchUsers = async (req: UserRequest, res: Response, next: NextFunction) => {
     try {
       const {q} = req.query;
-      const users = await User.find({
-        $or: [
-          { firstName: { $regex: q, $options: "i" } }, 
-          { email: { $regex: q, $options: "i" } },
-          { lastName: { $regex: q, $options: "i" } }
-        ]
-      }).select("-password");
+      let users;
+      if(q === ""){
+        users = await User.find().select("-password");
+      }
+      else{
+          users = await User.find({
+            $or: [
+              { firstName: { $regex: q, $options: "i" } }, 
+              { email: { $regex: q, $options: "i" } },
+              { lastName: { $regex: q, $options: "i" } }
+            ]
+          }).select("-password");
+      }
       res.status(200)
       .json(new ApiResponse("Users list fetched!",users,200));
     } catch (error) {
@@ -208,37 +214,51 @@ export const followUser = async (req: UserRequest, res: Response, next: NextFunc
         if (Array.isArray(followingId)) {
             followingId = followingId[0];
         }
-        
+
+        // Validate input
         if (!followingId || typeof followingId !== "string") {
-            res.status(400).json(new ApiError(400, "Invalid followingId"));
+            res.status(400).json(new ApiError(400, "Invalid user Id"));
         }
 
-        const userTobeAdded = await User.findById(followingId);
-        if (!userTobeAdded) {
-            res.status(404).json(new ApiError(404, "User doesn't exist"));
-        }
+        const currentUser = await User.findById(req.user?._id) as any;
+        const userToFollow = await User.findById(followingId) as any;
 
-        const user = await User.findById(req?.user?._id) as any;
-        if (!user) {
+        // Check if both users exist
+        if (!currentUser) {
             res.status(401).json(new ApiError(401, "Unauthorized access"));
         }
 
-        if (!user?.following) {
-            user.following = []; // Initialize array if undefined
+        if (!userToFollow) {
+            res.status(404).json(new ApiError(404, "User doesn't exist"));
         }
 
-        const followingObjectId = new mongoose.Types.ObjectId(followingId as any);
+        const currentUserId = new mongoose.Types.ObjectId(currentUser?._id) as any;
+        const targetUserId = new mongoose.Types.ObjectId(userToFollow?._id) as any;
 
-        if (!user?.following.some((id: any) => id.equals(followingObjectId))) {
-            user?.following.push(followingObjectId);
-            await user?.save();
+        // Add to following list if not already followed
+        if (!currentUser?.following?.some((id: any) => id.equals(targetUserId))) {
+            currentUser.following = currentUser?.following || [];
+            currentUser?.following.push(targetUserId);
+            await currentUser?.save();
         }
 
-        const data = user;
+        // Add to followers list of the target user
+        if (!userToFollow?.followers?.some((id: any) => id.equals(currentUserId))) {
+            userToFollow.followers = userToFollow?.followers || [];
+            userToFollow?.followers.push(currentUserId);
+            await userToFollow?.save();
+        }
 
-        res.status(200).json(new ApiResponse("User added to following", data, 200));
+        res.status(200).json(new ApiResponse("User followed successfully", currentUser, 200));
     } catch (err) {
         const CustomErr = err as CustomError;
-        res.status(CustomErr?.statusCode || 500).json(CustomErr?.message || "Some error occurred!");
+        if(CustomErr?.statusCode){
+            res.status(CustomErr?.statusCode)
+            .json(CustomErr?.message);
+        }
+        else{
+            res.status(500)
+            .json("Some error occured!");
+        }
     }
 };

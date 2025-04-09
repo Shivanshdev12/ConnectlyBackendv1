@@ -6,6 +6,7 @@ import ApiError from "../utils/ApiError";
 import ApiResponse from "../utils/ApiResponse";
 import { uploadOnCloudinary } from "../utils/cloudinary";
 import mongoose from "mongoose";
+import { Notification } from "../models/Notification.model";
 
 export const generateAuthToken = async (userId:object)=>{
     const id = await User.findById(userId);
@@ -247,6 +248,14 @@ export const followUser = async (req: UserRequest, res: Response, next: NextFunc
             userToFollow.followers = userToFollow?.followers || [];
             userToFollow?.followers.push(currentUserId);
             await userToFollow?.save();
+
+            const notification = new Notification({
+                sender: currentUser?._id,
+                receiver: userToFollow?._id,
+                type:"follow",
+                message: `${currentUser?.firstName} started following you.`
+            });
+            await notification.save();
         }
 
         res.status(200).json(new ApiResponse("User followed successfully", currentUser, 200));

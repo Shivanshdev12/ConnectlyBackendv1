@@ -24,6 +24,7 @@ const userSchema = new Schema<UserRegister>({
     email:{
         type:String,
         required:true,
+        unique:true,
     },
     password:{
         type:String,

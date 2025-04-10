@@ -4,17 +4,28 @@ import userRouter from "./routes/User.routes";
 import postRouter from "./routes/Post.routes";
 import commentRouter from "./routes/Comment.routes";
 import notificationRouter from "./routes/Notification.routes";
-import cors from "cors";
+import cors, { CorsOptions } from "cors";
 import cookieParser from "cookie-parser";
 import path from "path";
 
 const app = express();
-const corsOption = {
-    origin: 'http://localhost:5173',
-    methods: 'GET,POST,PUT,DELETE,OPTIONS',
-    allowedHeaders: 'Content-Type,Authorization',
-    credentials:true
-};
+const allowedOrigins: string[] = [
+    'http://localhost:5173',
+    'https://connectlyfrontendv1-1.onrender.com/'
+];
+
+const corsOption: CorsOptions = {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+};  
 
 app.use(express.json({limit:"16kb"}));
 app.use(express.urlencoded({limit:"16kb"}));
